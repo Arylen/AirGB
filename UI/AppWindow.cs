@@ -24,6 +24,11 @@ public abstract class AppWindow
         InitializeWindow();
     }
 
+    protected virtual void OnWindowLoad() { }
+    protected virtual void OnWindowUpdate() { }
+    protected virtual void OnWindowClosing() { }
+    public virtual void DrawWindow() { }
+
     private void InitializeWindow()
     {
         var options = WindowOptions.Default;
@@ -33,14 +38,51 @@ public abstract class AppWindow
 
         window = Window.Create(options);
 
+        window.Load += OnLoad;
+        window.Update += OnUpdate;
+        window.Render += OnRender;
+        window.Closing += OnClose;
+    }
 
+    private void OnLoad()
+    {
+        gl = GL.GetApi(window);
+        inputContext = window.CreateInput();
+        controller = new ImGuiController(gl, window, inputContext);
+        OnWindowLoad();
+    }
+
+    private void OnUpdate(double deltaTime)
+    {
+        controller.Update((float)deltaTime);
+        OnWindowUpdate();
+    }
+
+    private void OnRender(double deltaTime)
+    {
+        gl.Clear((uint)ClearBufferMask.ColorBufferBit);
+        DrawWindow();
+        controller.Render();
+    }
+
+    private void OnClose()
+    {
+        OnWindowClosing();
+
+        controller?.Dispose();
+        inputContext?.Dispose();
+        gl?.Dispose();
+
+        isWindowOpen = false;
     }
 
     public void Open(bool blockMainThread = false)
     {
         if (isWindowOpen)
             return;
-            
+
+        isWindowOpen = true;
+
         if (blockMainThread)
         {
             window.Run();
@@ -51,25 +93,5 @@ public abstract class AppWindow
                 () => window.Run()
             );
         }
-    }
-
-    private void OnLoad()
-    {
-
-    }
-
-    private void OnUpdate(double deltaTime)
-    {
-
-    }
-
-    private void OnRender(double deltaTime)
-    {
-
-    }
-
-    private void OnClose()
-    {
-
     }
 }
